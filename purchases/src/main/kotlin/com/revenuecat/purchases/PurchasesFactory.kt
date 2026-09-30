@@ -539,7 +539,7 @@ internal class PurchasesFactory(
                 backend,
                 legacyEventsFileHelper = EventsManager.paywalls(fileHelper = FileHelper(application)),
                 fileHelper = EventsManager.backendEvents(fileHelper = FileHelper(application)),
-                baseURL = AppConfig.paywallEventsURL,
+                baseURL = appConfig.paywallEventsBaseURL,
             )
 
             val adEventsManager = createEventsManager(
@@ -548,7 +548,7 @@ internal class PurchasesFactory(
                 backend,
                 legacyEventsFileHelper = null,
                 fileHelper = EventsManager.adEvents(fileHelper = FileHelper(application)),
-                baseURL = AppConfig.adEventsURL,
+                baseURL = appConfig.adEventsBaseURL,
             )
 
             val purchasesOrchestrator = PurchasesOrchestrator(

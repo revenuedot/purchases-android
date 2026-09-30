@@ -1,0 +1,15 @@
+{
+  "note": "Fork of RevenueCat's MIT SDK, maintained by RevenueDot, not affiliated with RevenueCat.",
+  "pipeline": "https://github.com/revenuedot/revenuedot/tree/main/scripts/forks",
+  "rules": "scripts/forks/rules/purchases-android.json",
+  "rulesSha256": "fbae6a6fabfd640ed870000543aab69adf04fca222844dcc56cde66c83a23aeb",
+  "upstream": {
+    "repo": "https://github.com/RevenueCat/purchases-android",
+    "mergeBase": "0a9644bef81dfdbde700d22eaf3b1f92afa33cec"
+  },
+  "apiHost": "https://api.revenuedot.app",
+  "signingPublicKey": "gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=",
+  "publishes": [
+    "Maven Central app.revenuedot.purchases:purchases, purchases-ui, purchases-store-amazon, purchases-store-galaxy, purchases-bom, … (same artifact ids, Kotlin packages stay com.revenuecat.purchases.*)"
+  ]
+}

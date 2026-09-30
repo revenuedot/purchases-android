@@ -13,7 +13,7 @@ internal class DefaultSignatureVerifier(
     publicKeyBytes: ByteArray,
 ) : SignatureVerifier {
     companion object {
-        private const val DEFAULT_PUBLIC_KEY = "UC1upXWg5QVmyOSwozp755xLqquBKjjU+di6U8QhMlM="
+        private const val DEFAULT_PUBLIC_KEY = "gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg="
 
         // Ed25519 is not FIPS compatible, so Ed25519Verify cannot be created while Tink is restricted to FIPS mode.
         fun isSupported(): Boolean = !TinkFips.useOnlyFips()
