@@ -7,7 +7,7 @@ import java.net.URI
 
 internal class RevenueCatApiClient(
     private val apiKey: String,
-    private val baseUrl: String = "https://api.revenuecat.com/v2",
+    private val baseUrl: String = "https://api.revenuedot.app/v2",
 ) {
 
     private companion object {
