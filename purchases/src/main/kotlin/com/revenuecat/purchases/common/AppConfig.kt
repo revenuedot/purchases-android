@@ -31,11 +31,11 @@ internal class AppConfig(
     baseUrlString: String = Companion.baseUrlString,
 ) {
     companion object {
-        val diagnosticsURL = URL("https://api-diagnostics.revenuecat.com/")
-        val paywallEventsURL = URL("https://api-paywalls.revenuecat.com/")
-        val adEventsURL = URL("https://a.revenue.cat/")
-        val fallbackURL = URL("https://api-production.8-lives-cat.io/")
-        const val baseUrlString = "https://api.revenuecat.com/"
+        val diagnosticsURL = URL("https://api.revenuedot.app/")
+        val paywallEventsURL = URL("https://api.revenuedot.app/")
+        val adEventsURL = URL("https://api.revenuedot.app/")
+        val fallbackURL = URL("https://api.revenuedot.app/")
+        const val baseUrlString = "https://api.revenuedot.app/"
     }
 
     // Should only be used for tests
@@ -55,6 +55,11 @@ internal class AppConfig(
     val packageName: String = context.packageName
     var finishTransactions: Boolean = purchasesAreCompletedBy.finishTransactions
     val hasProxyURL: Boolean = proxyURL != null
+
+    // RevenueDot: diagnostics, paywall events and ad events honour proxyURL, like the main API does.
+    val diagnosticsBaseURL: URL = proxyURL ?: diagnosticsURL
+    val paywallEventsBaseURL: URL = proxyURL ?: paywallEventsURL
+    val adEventsBaseURL: URL = proxyURL ?: adEventsURL
     val baseURL: URL = proxyURL?.also {
         log(LogIntent.INFO) { ConfigureStrings.CONFIGURING_PURCHASES_PROXY_URL_SET }
     } ?: URL(baseUrlString)
