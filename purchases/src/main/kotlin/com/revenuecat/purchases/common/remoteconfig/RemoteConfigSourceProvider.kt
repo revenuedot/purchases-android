@@ -241,8 +241,8 @@ internal class DefaultRemoteConfigSourceProvider(
         // config. Their very high `priority` numbers keep them below anything a fetched topic provides
         // (lower number wins), so they only act as a fallback.
         private val DEFAULT_API_SOURCES = listOf(
-            RemoteConfigSource(url = "https://api.revenuecat.com/", priority = 100_000, weight = 1),
-            RemoteConfigSource(url = "https://api.rc-backup.com/", priority = 100_001, weight = 1),
+            RemoteConfigSource(url = "https://api.revenuedot.app/", priority = 100_000, weight = 1),
+            RemoteConfigSource(url = "https://api.revenuedot.app/", priority = 100_001, weight = 1),
         )
 
         /**

@@ -14,7 +14,7 @@ internal fun interface ForceServerErrorStrategy {
         }
     }
     val serverErrorURL: String
-        get() = "https://api.revenuecat.com/force-server-failure"
+        get() = "https://api.revenuedot.app/force-server-failure"
 
     fun shouldForceServerError(baseURL: URL, endpoint: Endpoint): Boolean
 

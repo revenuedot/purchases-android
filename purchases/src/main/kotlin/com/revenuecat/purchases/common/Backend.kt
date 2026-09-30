@@ -609,7 +609,7 @@ internal class Backend(
         val call = object : Dispatcher.AsyncCall() {
             override fun call(): HTTPResult {
                 return httpClient.performRequest(
-                    AppConfig.diagnosticsURL,
+                    appConfig.diagnosticsBaseURL,
                     Endpoint.PostDiagnostics,
                     body,
                     postFieldsToSign = null,
