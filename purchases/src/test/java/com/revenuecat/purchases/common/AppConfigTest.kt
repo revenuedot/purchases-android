@@ -208,7 +208,7 @@ class AppConfigTest {
 
     @Test
     fun `default baseURL is correct`() {
-        val expected = URL("https://api.revenuecat.com/")
+        val expected = URL("https://api.revenuedot.app/")
         val appConfig = AppConfig(
             context = mockk(relaxed = true),
             purchasesAreCompletedBy = REVENUECAT,
@@ -531,7 +531,7 @@ class AppConfigTest {
                 "showInAppMessagesAutomatically=false, " +
                 "apiKeyValidationResult=VALID, " +
                 "iamEnabled=false, " +
-                "baseURL=https://api.revenuecat.com/)")
+                "baseURL=https://api.revenuedot.app/)")
     }
 
     // region IAM login
@@ -583,7 +583,7 @@ class AppConfigTest {
             isDebugBuild = false,
             apiKeyValidationResult = APIKeyValidator.ValidationResult.VALID,
         )
-        assertThat(appConfig.fallbackBaseURLs).isEqualTo(listOf(URL("https://api-production.8-lives-cat.io/")))
+        assertThat(appConfig.fallbackBaseURLs).isEqualTo(listOf(URL("https://api.revenuedot.app/")))
     }
 
     @Test
