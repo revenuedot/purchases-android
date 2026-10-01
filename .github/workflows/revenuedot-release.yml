@@ -1,0 +1,171 @@
+# RevenueDot release: publishes app.revenuedot.purchases:* to Maven Central (Central Portal).
+# Not part of upstream RevenueCat; kept on revenuedot/main-patches and every revenuedot/release-* branch.
+#
+# Trigger: push a tag <upstream version>-revenuedot cut from revenuedot/release-<version>,
+# e.g. `git tag 10.23.3-revenuedot origin/revenuedot/release-10.23.3 && git push origin 10.23.3-revenuedot`.
+# The published version is the upstream version (10.23.3), read from gradle.properties.
+# workflow_dispatch runs the same build and tests and a local publish; it uploads only when run on a
+# tag with `publish` checked.
+name: RevenueDot release (Maven Central)
+
+on:
+  push:
+    tags:
+      - '*-revenuedot'
+      - '*-revenuedot.*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload to Maven Central (only when run on a *-revenuedot tag)
+        type: boolean
+        default: false
+
+concurrency:
+  group: revenuedot-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+  EXPECTED_GROUP: app.revenuedot.purchases
+
+jobs:
+  build:
+    name: Check version, build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v5
+      # JDK 17 builds the SDK (toolchain 17); Gradle runs on JDK 21 because Robolectric's Android SDK 36
+      # sandbox needs Java 21. Upstream's mise.toml pins the same pair.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Let Gradle find both JDKs as toolchains
+        run: mkdir -p ~/.gradle && echo "org.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64" >> ~/.gradle/gradle.properties
+
+      - name: Check the tag matches the Gradle version
+        id: version
+        run: |
+          set -euo pipefail
+          prop() { sed -nE "s/^$1=(.*)$/\1/p" gradle.properties | tail -1; }
+          GRADLE_VERSION="$(prop VERSION_NAME)"
+          GROUP="$(prop GROUP)"
+          FILE_VERSION="$(tr -d '[:space:]' < .version)"
+          SDK_VERSION="$(sed -nE 's/.*frameworkVersion = "([^"]+)".*/\1/p' purchases/src/main/kotlin/com/revenuecat/purchases/common/Config.kt)"
+          echo "gradle.properties VERSION_NAME=$GRADLE_VERSION, .version=$FILE_VERSION, Config.frameworkVersion=$SDK_VERSION, GROUP=$GROUP"
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$GROUP" = "$EXPECTED_GROUP" ] || fail "GROUP is '$GROUP', expected '$EXPECTED_GROUP'. Re-run scripts/forks/apply.ts on this branch."
+          [ "$GRADLE_VERSION" = "$FILE_VERSION" ] || fail "VERSION_NAME ($GRADLE_VERSION) and .version ($FILE_VERSION) differ."
+          [ "$GRADLE_VERSION" = "$SDK_VERSION" ] || fail "VERSION_NAME ($GRADLE_VERSION) and Config.frameworkVersion ($SDK_VERSION) differ."
+          PUBLISH=false
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+            TAG_VERSION="$(echo "$TAG" | sed -E 's/-revenuedot(\.[0-9]+)?$//')"
+            [ "$TAG_VERSION" != "$TAG" ] || fail "Tag '$TAG' does not end in -revenuedot."
+            [ "$TAG_VERSION" = "$GRADLE_VERSION" ] || fail "Tag '$TAG' says version $TAG_VERSION but gradle.properties VERSION_NAME is $GRADLE_VERSION. Cut the tag from revenuedot/release-$TAG_VERSION."
+            if [ "$GITHUB_EVENT_NAME" = "push" ] || [ "${{ inputs.publish }}" = "true" ]; then PUBLISH=true; fi
+          elif [ "${{ inputs.publish }}" = "true" ]; then
+            fail "Publishing needs a *-revenuedot tag; this run is on branch $GITHUB_REF_NAME."
+          fi
+          case "$GRADLE_VERSION" in *SNAPSHOT*) [ "$PUBLISH" = "false" ] || fail "Refusing to publish SNAPSHOT version $GRADLE_VERSION.";; esac
+          echo "version=$GRADLE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+
+      # Unit tests of the core SDK module in both published flavors (about 9,400 tests) plus the codegen
+      # Gradle plugin. The full upstream matrix (every module, debug and release, Paparazzi snapshots,
+      # emulator tests) runs in RevenueCat's CI.
+      - name: Unit tests (purchases defaults + customEntitlementComputation, codegen)
+        run: ./gradlew :purchases:testDefaultsReleaseUnitTest :purchases:testCustomEntitlementComputationReleaseUnitTest :codegen:test --continue --stacktrace
+
+      - name: Build and publish to the local Maven repository
+        run: |
+          ./gradlew publishToMavenLocal --no-configuration-cache
+          ./gradlew :purchases:publishToMavenLocal --no-configuration-cache \
+            -PANDROID_VARIANT_TO_PUBLISH=customEntitlementComputationRelease -PPOM_ARTIFACT_ID=purchases-custom-entitlement-computation
+          ./gradlew :ui:debugview:publishToMavenLocal --no-configuration-cache \
+            -PANDROID_VARIANT_TO_PUBLISH=defaultsDebug -PPOM_ARTIFACT_ID=purchases-debug-view
+
+      - name: Check the local artifacts
+        run: |
+          set -euo pipefail
+          V="${{ steps.version.outputs.version }}"
+          ROOT=~/.m2/repository/app/revenuedot/purchases
+          [ -d "$ROOT" ] || { echo "::error::Nothing was published under $EXPECTED_GROUP"; exit 1; }
+          for dir in "$ROOT"/*/"$V"; do
+            a="$(basename "$(dirname "$dir")")"
+            pom="$dir/$a-$V.pom"
+            grep -q "<groupId>$EXPECTED_GROUP</groupId>" "$pom" || { echo "::error::$pom has the wrong groupId"; exit 1; }
+            grep -q "github.com/revenuedot/" "$pom" || { echo "::error::$pom has no RevenueDot scm/url"; exit 1; }
+            if [ "$a" != purchases-bom ]; then
+              ls "$dir"/*-sources.jar >/dev/null 2>&1 || { echo "::error::$a has no sources jar"; exit 1; }
+              ls "$dir"/*-javadoc.jar >/dev/null 2>&1 || { echo "::error::$a has no javadoc jar"; exit 1; }
+            fi
+            echo "$a:$V ok"
+          done
+          # The codegen plugin marker lives at app/revenuedot/purchases/codegen/...; nothing may land outside our group.
+          if find ~/.m2/repository -path '*/com/revenuecat/*' -name "*-$V.pom" | grep -q .; then
+            echo "::error::Artifacts outside $EXPECTED_GROUP were produced:"; find ~/.m2/repository -path '*/com/revenuecat/*' -name "*-$V.pom"; exit 1
+          fi
+
+  publish:
+    name: Publish to Maven Central
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      SONATYPE_CONNECT_TIMEOUT_SECONDS: '300'
+      SONATYPE_CLOSE_TIMEOUT_SECONDS: '1800'
+    steps:
+      - uses: actions/checkout@v5
+      # JDK 17 builds the SDK (toolchain 17); Gradle runs on JDK 21 because Robolectric's Android SDK 36
+      # sandbox needs Java 21. Upstream's mise.toml pins the same pair.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+      - name: Let Gradle find both JDKs as toolchains
+        run: mkdir -p ~/.gradle && echo "org.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64" >> ~/.gradle/gradle.properties
+
+      - name: Check the publishing secrets are set
+        run: |
+          missing=""
+          [ -n "$ORG_GRADLE_PROJECT_mavenCentralUsername" ] || missing="$missing MAVEN_CENTRAL_USERNAME"
+          [ -n "$ORG_GRADLE_PROJECT_mavenCentralPassword" ] || missing="$missing MAVEN_CENTRAL_PASSWORD"
+          [ -n "$ORG_GRADLE_PROJECT_signingInMemoryKey" ] || missing="$missing MAVEN_GPG_PRIVATE_KEY"
+          [ -n "$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" ] || missing="$missing MAVEN_GPG_PASSPHRASE"
+          [ -z "$missing" ] || { echo "::error::Missing secrets in the production environment:$missing"; exit 1; }
+
+      # Same three uploads as upstream's fastlane `deploy` lane. gradle.properties sets
+      # SONATYPE_HOST=CENTRAL_PORTAL and SONATYPE_AUTOMATIC_RELEASE=true, so each upload is released
+      # once the Central Portal validates it (a failed validation releases nothing).
+      - name: Publish ${{ needs.build.outputs.version }} (defaults variant, all modules)
+        run: ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache --no-parallel --no-build-cache -PRELEASE_SIGNING_ENABLED=true
+      - name: Publish purchases-custom-entitlement-computation
+        run: |
+          ./gradlew :purchases:publishAllPublicationsToMavenCentralRepository --no-configuration-cache --no-parallel --no-build-cache -PRELEASE_SIGNING_ENABLED=true \
+            -PANDROID_VARIANT_TO_PUBLISH=customEntitlementComputationRelease -PPOM_ARTIFACT_ID=purchases-custom-entitlement-computation
+      - name: Publish purchases-debug-view
+        run: |
+          ./gradlew :ui:debugview:publishAllPublicationsToMavenCentralRepository --no-configuration-cache --no-parallel --no-build-cache -PRELEASE_SIGNING_ENABLED=true \
+            -PANDROID_VARIANT_TO_PUBLISH=defaultsDebug -PPOM_ARTIFACT_ID=purchases-debug-view
