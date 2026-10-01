@@ -28,7 +28,7 @@ Key advantages:
 
 ## Setup
 
-The plugin is published to Maven Central as part of the RevenueCat Purchases SDK. The plugin ID is `com.revenuecat.purchases.codegen` and the artifact is `com.revenuecat.purchases:purchases-codegen-plugin`. The plugin version always matches the Purchases SDK version, so use the same version string you already use for the SDK itself.
+The plugin is published to Maven Central as part of the RevenueCat Purchases SDK. The plugin ID is `app.revenuedot.purchases.codegen` and the artifact is `app.revenuedot.purchases:purchases-codegen-plugin`. The plugin version always matches the Purchases SDK version, so use the same version string you already use for the SDK itself.
 
 ### 1. Apply the plugin
 
@@ -39,7 +39,7 @@ Add the plugin to your version catalog in `gradle/libs.versions.toml`:
 purchases = "PURCHASES_VERSION"
 
 [plugins]
-revenuecat-codegen = { id = "com.revenuecat.purchases.codegen", version.ref = "purchases" }
+revenuecat-codegen = { id = "app.revenuedot.purchases.codegen", version.ref = "purchases" }
 ```
 
 Declare it in your root `build.gradle.kts` so Gradle resolves the plugin for all subprojects:

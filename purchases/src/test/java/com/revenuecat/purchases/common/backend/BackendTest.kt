@@ -121,6 +121,7 @@ class BackendTest {
         every { customEntitlementComputation } returns false
         every { fallbackBaseURLs } returns emptyList()
         every { store } returns Store.PLAY_STORE
+        every { diagnosticsBaseURL } returns AppConfig.diagnosticsURL // RevenueDot: diagnostics honour proxyURL
     }
     private val dispatcher = spyk(SyncDispatcher())
     private val backendHelper = BackendHelper(API_KEY, dispatcher, mockAppConfig, mockClient)
