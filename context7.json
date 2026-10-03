@@ -1,0 +1,39 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "RevenueDot Android SDK",
+  "description": "RevenueDot's MIT fork of RevenueCat's Android SDK, pointed at RevenueDot, the open-source RevenueCat alternative for in-app purchases and subscriptions.",
+  "folders": [],
+  "excludeFolders": [
+    ".circleci",
+    ".github",
+    "fastlane",
+    ".revenuedot",
+    "scripts",
+    "api-tester",
+    "baselineprofile",
+    "build-logic",
+    "codegen",
+    "danger",
+    "detekt-rules",
+    "examples",
+    "integration-tests",
+    "maestro",
+    "test-apps",
+    "upstream",
+    "dokka-hide-internal",
+    ".idea",
+    ".run",
+    ".cursor"
+  ],
+  "excludeFiles": [
+    "CHANGELOG.md",
+    "CHANGELOG.latest.md",
+    "CHANGELOG-LATEST.md"
+  ],
+  "rules": [
+    "Add `implementation(\"app.revenuedot.purchases:purchases:<version>\")` from Maven Central, plus `app.revenuedot.purchases:purchases-ui` for paywalls. The artifact ids are the same as RevenueCat's.",
+    "Kotlin packages stay `com.revenuecat.purchases.*`, so imports such as `import com.revenuecat.purchases.Purchases` do not change.",
+    "RevenueDot Cloud (https://api.revenuedot.app) is the default API host. For a self-hosted server, set `Purchases.proxyURL = URL(\"https://revenuedot.example.com\")` before `Purchases.configure`.",
+    "Pass the app's public key from the RevenueDot dashboard (it starts with goog_) to `PurchasesConfiguration.Builder`."
+  ]
+}
